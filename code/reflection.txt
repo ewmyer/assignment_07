@@ -1,8 +1,21 @@
-Write your reflection here.
+I learned that scraping depends on understanding how a page is built, not just
+finding one CSS selector. Class and id selectors helped locate elements, while a
+sibling selector was useful for connecting a section heading to its menu cards.
+The sites also required different approaches: reading visible text with
+`inner_text`, reading an item's `href` attribute, waiting for JavaScript-loaded
+content, and handling pagination while crawling. For tabular menus, `read_html`
+and `melt` made it easier to reshape size columns into one row per item and size.
 
-See reflection.md for what makes a good reflection — be specific, use the
-terminology from this assignment (HTML element, CSS selector, class and id
-selectors, sibling selector, inner_text, attribute, headless browser, waiting for
-JavaScript, crawling, pagination, read_html, melt, fuzzy matching, normalization,
-threshold, human in the loop, merge indicator, gap analysis), and make it
-actionable.
+The matching work taught me that fuzzy matching measures similarity between
+strings, not whether two products are actually the same. Normalization removes
+formatting differences, and a score threshold can identify likely matches, but
+names like "Matcha Latte" and "Mocha Latte" show why a human in the loop matters.
+Saving owner decisions also prevents asking the same questions on the next run.
+
+In the analysis, I learned to use an outer merge with a merge indicator to
+separate items sold only by us, only by rivals, or by both. I found it important
+to group rival menus by distinct café before counting availability, so multiple
+sizes do not inflate the gap counts. One area I want to practice more is choosing
+the right pandas operation and checking its row order after merges and
+aggregations. Next, I will recreate a small example dataset, predict the merge
+and groupby results by hand, and compare them with the actual output and tests.

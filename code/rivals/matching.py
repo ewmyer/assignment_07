@@ -172,7 +172,8 @@ def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
 
         if (cafe, item) in answers:
             status = "owner"
-            matched_to = item if answers[(cafe, item)] == NEW_ITEM else answers[(cafe, item)]
+            answer = answers[(cafe, item)]
+            matched_to = item if answer == NEW_ITEM else answer
         elif score >= AUTO_MATCH:
             status = "auto"
             matched_to = suggestions[0][0]
