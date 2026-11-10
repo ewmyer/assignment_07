@@ -52,8 +52,9 @@ def normalize_name(name: str) -> str:
     - Split into words, drop the ones in settings.FILLER_WORDS, and join the rest
       with single spaces.
     """
-    # TODO: your code here
-    pass
+    text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    text = re.sub(r"[^a-z0-9 ]+", " ", text.lower())
+    return " ".join(word for word in text.split() if word not in FILLER_WORDS)
 
 
 def top_candidates(name: str, choices: list[str], limit: int = 3) -> list[tuple]:
@@ -75,8 +76,15 @@ def top_candidates(name: str, choices: list[str], limit: int = 3) -> list[tuple]
       tuples, best first. The index says which original choice it was.
     - Return `(choices[index], round(score))` for each.
     """
-    # TODO: your code here
-    pass
+    normalized_name = normalize_name(name)
+    normalized_choices = [normalize_name(choice) for choice in choices]
+    matches = process.extract(
+        normalized_name,
+        normalized_choices,
+        scorer=fuzz.token_sort_ratio,
+        limit=limit,
+    )
+    return [(choices[index], round(score)) for _match, score, index in matches]
 
 
 def match_band(score: float) -> str:
@@ -91,8 +99,11 @@ def match_band(score: float) -> str:
     - Two `if`s and a `return`: compare `score` to `AUTO_MATCH` first, then
       `REVIEW` (both imported from settings — don't type 90 and 70).
     """
-    # TODO: your code here
-    pass
+    if score >= AUTO_MATCH:
+        return "auto"
+    if score >= REVIEW:
+        return "review"
+    return "unlikely"
 
 
 def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
@@ -144,8 +155,47 @@ def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
     - `return pd.DataFrame(rows, columns=[...the seven columns...])` — naming the
       columns keeps them in order.
     """
-    # TODO: your code here
-    pass
+    ours = menus[menus["cafe"] == OUR_CAFE]
+    pool = dict(zip(ours["item"], ours["kind"]))
+    answers = {
+        (row["cafe"], row["item"]): row["matched_to"]
+        for row in decisions.to_dict("records")
+    }
+    theirs = menus[menus["cafe"] != OUR_CAFE]
+    rivals = theirs[["cafe", "item", "kind"]].drop_duplicates()
+
+    rows = []
+    for cafe, item, kind in rivals.itertuples(index=False):
+        choices = [name for name, item_kind in pool.items() if item_kind == kind]
+        suggestions = top_candidates(item, choices)
+        score = suggestions[0][1] if suggestions else 0
+
+        if (cafe, item) in answers:
+            status = "owner"
+            matched_to = item if answers[(cafe, item)] == NEW_ITEM else answers[(cafe, item)]
+        elif score >= AUTO_MATCH:
+            status = "auto"
+            matched_to = suggestions[0][0]
+        else:
+            status = "unreviewed"
+            matched_to = None
+
+        if matched_to is not None and matched_to not in pool:
+            pool[matched_to] = kind
+
+        rows.append({
+            "cafe": cafe,
+            "item": item,
+            "kind": kind,
+            "status": status,
+            "matched_to": matched_to,
+            "score": score,
+            "suggestions": suggestions,
+        })
+
+    return pd.DataFrame(rows, columns=[
+        "cafe", "item", "kind", "status", "matched_to", "score", "suggestions",
+    ])
 
 
 def record_decision(decisions: pd.DataFrame, cafe: str, item: str,
@@ -162,5 +212,10 @@ def record_decision(decisions: pd.DataFrame, cafe: str, item: str,
     - `pd.concat` them with a one-row DataFrame of the new answer; reset the index.
       (When nothing is kept, the one-row DataFrame is the answer.)
     """
-    # TODO: your code here
-    pass
+    keep = ~((decisions["cafe"] == cafe) & (decisions["item"] == item))
+    remaining = decisions.loc[keep, DECISION_COLUMNS]
+    answer = pd.DataFrame(
+        [{"cafe": cafe, "item": item, "matched_to": matched_to}],
+        columns=DECISION_COLUMNS,
+    )
+    return pd.concat([remaining, answer], ignore_index=True).reset_index(drop=True)
